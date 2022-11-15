@@ -164,4 +164,91 @@ Django内置的这个迁移确实非常强大，能让你在开发过程中持�
 2. 运行 python manage.py makemigrations 为模型的改变生成迁移文件。
 3. 运行 python manage.py migrate 来应用数据库迁移。
 
-### Django API 
+### Django Shell --> Database API
+通过manage.py shell命令，这种方式进入交互终端，会设置 `DJANGO_SETTINGS_MODULE` 环境变量导入Django项目，从而在这个终端中可以直接调用Django提供的API，例如直接进行数据库的交互操作
+```
+>>> from polls.models import Choice, Question
+# 获取所有
+>>> Question.objects.all()
+<QuerySet []>
+
+# 新增
+>>> from django.utils import timezone
+>>> q = Question(question_text="What's new?", pub_date=timezone.now())
+>>> q.save()
+>>> q.id
+1
+
+# 修改
+>>> q.question_text
+"What's new?"
+>>> q.pub_date
+datetime.datetime(2012, 2, 26, 13, 0, 0, 775217, tzinfo=datetime.timezone.utc)
+>>> q.question_text = "What's up?"
+>>> q.save()
+
+# 获取所有
+>>> Question.objects.all()
+<QuerySet [<Question: Question object (1)>]>
+```
+model返回`<Question: Question object (1)>`可以通过对model新增__str__方法实现返回字符串。
+重新打开python manage.py shell
+```
+>>> from polls.models import Choice, Question
+
+>>> Question.objects.all()
+<QuerySet [<Question: What's up?>]>
+
+# 筛选
+>>> Question.objects.filter(id=1)
+<QuerySet [<Question: What's up?>]>
+>>> Question.objects.filter(question_text__startswith='What')
+<QuerySet [<Question: What's up?>]>
+
+# 日期筛选, __year双下划线筛选年份
+>>> from django.utils import timezone
+>>> current_year = timezone.now().year
+>>> Question.objects.get(pub_date__year=current_year)
+<Question: What's up?>
+
+# 筛选-不存在的会抛出DoesNotExist错误
+>>> Question.objects.get(id=2)
+Traceback (most recent call last):
+    ...
+DoesNotExist: Question matching query does not exist.
+
+# 通过主键查找，与直接get(id=1)一样
+>>> Question.objects.get(pk=1)
+<Question: What's up?>
+
+# 获取一个Question, 一对多关系操作
+>>> q = Question.objects.get(pk=1)
+
+# Choice和Question形成多对一关系，通过choice的外键关联，可以在Question使用choice_set进行获取关联值
+>>> q.choice_set.all()
+<QuerySet []>
+
+# 为Question创建choice
+>>> q.choice_set.create(choice_text='Not much', votes=0)
+<Choice: Not much>
+>>> q.choice_set.create(choice_text='The sky', votes=0)
+<Choice: The sky>
+>>> c = q.choice_set.create(choice_text='Just hacking again', votes=0)
+
+>>> c.question
+<Question: What's up?>
+
+# And vice versa: Question objects get access to Choice objects.
+>>> q.choice_set.all()
+<QuerySet [<Choice: Not much>, <Choice: The sky>, <Choice: Just hacking again>]>
+>>> q.choice_set.count()
+3
+
+# 使用双下划线__year进行筛选question中的年份
+>>> Choice.objects.filter(question__pub_date__year=current_year)
+<QuerySet [<Choice: Not much>, <Choice: The sky>, <Choice: Just hacking again>]>
+
+# 使用__startswith筛选外键值
+>>> c = q.choice_set.filter(choice_text__startswith='Just hacking')
+>>> c.delete()
+```
