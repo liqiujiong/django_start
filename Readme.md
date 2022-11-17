@@ -252,3 +252,17 @@ DoesNotExist: Question matching query does not exist.
 >>> c = q.choice_set.filter(choice_text__startswith='Just hacking')
 >>> c.delete()
 ```
+### Django admin
+上面开启了内置应用，此时通过/admin，已经可以访问到登录页面了，账号的话通过manage.py创建admin账号：
+```
+python manage.py createsuperuser
+```
+#### 在admin中新增我们自己写的polls应用
+需要在polls的应用中进行注册，/polls/admin.py加入以下代码
+```
+from django.contrib import admin
+
+from .models import Question
+
+admin.site.register(Question)
+```
