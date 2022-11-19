@@ -266,3 +266,4 @@ from .models import Question
 
 admin.site.register(Question)
 ```
+就可以在admin管理面板中管理Polls应用的相关模型
