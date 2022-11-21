@@ -214,26 +214,26 @@ Django内置的这个迁移确实非常强大，能让你在开发过程中持�
 >>> from polls.models import Choice, Question
 # 获取所有
 >>> Question.objects.all()
-<QuerySet []>
+# <QuerySet []>
 
 # 新增
 >>> from django.utils import timezone
 >>> q = Question(question_text="What's new?", pub_date=timezone.now())
 >>> q.save()
 >>> q.id
-1
+# 1
 
 # 修改
 >>> q.question_text
-"What's new?"
+# "What's new?"
 >>> q.pub_date
-datetime.datetime(2012, 2, 26, 13, 0, 0, 775217, tzinfo=datetime.timezone.utc)
+# datetime.datetime(2012, 2, 26, 13, 0, 0, 775217, tzinfo=datetime.timezone.utc)
 >>> q.question_text = "What's up?"
 >>> q.save()
 
 # 获取所有
 >>> Question.objects.all()
-<QuerySet [<Question: Question object (1)>]>
+# <QuerySet [<Question: Question object (1)>]>
 ```
 
 model返回`<Question: Question object (1)>`可以通过对model新增__str__方法实现返回字符串。
@@ -243,29 +243,29 @@ model返回`<Question: Question object (1)>`可以通过对model新增__str__方
 >>> from polls.models import Choice, Question
 
 >>> Question.objects.all()
-<QuerySet [<Question: What's up?>]>
+# <QuerySet [<Question: What's up?>]>
 
 # 筛选
 >>> Question.objects.filter(id=1)
-<QuerySet [<Question: What's up?>]>
+# <QuerySet [<Question: What's up?>]>
 >>> Question.objects.filter(question_text__startswith='What')
-<QuerySet [<Question: What's up?>]>
+# <QuerySet [<Question: What's up?>]>
 
 # 日期筛选, __year双下划线筛选年份
 >>> from django.utils import timezone
 >>> current_year = timezone.now().year
 >>> Question.objects.get(pub_date__year=current_year)
-<Question: What's up?>
+# <Question: What's up?>
 
 # 筛选-不存在的会抛出DoesNotExist错误
 >>> Question.objects.get(id=2)
-Traceback (most recent call last):
-    ...
-DoesNotExist: Question matching query does not exist.
+# Traceback (most recent call last):
+#     ...
+# DoesNotExist: Question matching query does not exist.
 
 # 通过主键查找，与直接get(id=1)一样
 >>> Question.objects.get(pk=1)
-<Question: What's up?>
+# <Question: What's up?>
 
 # 获取一个Question, 一对多关系操作
 >>> q = Question.objects.get(pk=1)
@@ -276,23 +276,23 @@ DoesNotExist: Question matching query does not exist.
 
 # 为Question创建choice
 >>> q.choice_set.create(choice_text='Not much', votes=0)
-<Choice: Not much>
+# <Choice: Not much>
 >>> q.choice_set.create(choice_text='The sky', votes=0)
-<Choice: The sky>
+# <Choice: The sky>
 >>> c = q.choice_set.create(choice_text='Just hacking again', votes=0)
 
 >>> c.question
-<Question: What's up?>
+# <Question: What's up?>
 
 # And vice versa: Question objects get access to Choice objects.
 >>> q.choice_set.all()
-<QuerySet [<Choice: Not much>, <Choice: The sky>, <Choice: Just hacking again>]>
+# <QuerySet [<Choice: Not much>, <Choice: The sky>, <Choice: Just hacking again>]>
 >>> q.choice_set.count()
-3
+# 3
 
 # 使用双下划线__year进行筛选question中的年份
 >>> Choice.objects.filter(question__pub_date__year=current_year)
-<QuerySet [<Choice: Not much>, <Choice: The sky>, <Choice: Just hacking again>]>
+# <QuerySet [<Choice: Not much>, <Choice: The sky>, <Choice: Just hacking again>]>
 
 # 使用__startswith筛选外键值
 >>> c = q.choice_set.filter(choice_text__startswith='Just hacking')
@@ -320,3 +320,242 @@ admin.site.register(Question)
 ```
 
 就可以在admin管理面板中管理Polls应用的相关模型
+
+## View视图
+
+在 Django 中，网页和其他内容都是从视图派生而来。每一个视图表现为一个 Python 函数（或者说方法，如果是在基于类的视图里的话）。Django 将会根据用户请求的 URL 来选择使用哪个视图。
+
+URL 样式是 URL 的一般形式 - 例如：/newsarchive/\<year>/\<month>/。
+
+Django 使用了 'URLconfs' 来配置URL，将 URL 和视图关联起来。
+
+### 视图入门
+
+```python
+#polls\views.py
+def detail(request, question_id):
+    return HttpResponse("You're looking at question %s." % question_id)
+
+def results(request, question_id):
+    response = "You're looking at the results of question %s."
+    return HttpResponse(response % question_id)
+
+def vote(request, question_id):
+    return HttpResponse("You're voting on question %s." % question_id)
+```
+
+新视图添加进 polls.urls 模块里，使用 url() 函数进行调用
+
+```python
+#polls\urls.py
+from django.urls import path
+
+from . import views
+
+urlpatterns = [
+    # ex: /polls/
+    path('', views.index, name='index'),
+    # ex: /polls/5/
+    path('<int:question_id>/', views.detail, name='detail'),
+    # ex: /polls/5/results/
+    path('<int:question_id>/results/', views.results, name='results'),
+    # ex: /polls/5/vote/
+    path('<int:question_id>/vote/', views.vote, name='vote'),
+]
+```
+
+现在通过不同的url路径就可以打开不同的视图，例如访问`/polls/34/`将会访问跳到detail视图中，页面会显示“You're looking at question 34.”
+
+- Django匹配过程：
+
+    当某人请求你网站的某一页面时——比如说， "/polls/34/" ，Django 将会载入 django_start.urls 模块，因为这在配置项 ROOT_URLCONF 中设置了。然后 Django 寻找名为 urlpatterns 变量并且按序匹配正则表达式。在找到匹配项 'polls/'，它切掉了匹配的文本（"polls/"），将剩余文本——"34/"，发送至 'polls.urls' URLconf 做进一步处理。在这里剩余文本匹配了 '\<int:question_id>/'，使得我们 Django 以如下形式调用 detail():
+
+    ```python
+    detail(request=<HttpRequest object>, question_id=34)
+    ```
+
+### 编写一个视图
+
+每个视图必须要做的只有两件事：
+
+  1. 进行业务操作如数据增删改查，或者你可以做任何你想做的事。
+  2. 返回一个包含被请求页面内容的 HttpResponse 对象，或者抛出一个异常，比如 Http404。
+
+接下来我们通过修改polls的视图，进行查询数据库，让它能展示数据库里以发布日期排序的最近 5 个投票问题。
+
+1. 创建template目录，通过使用 Django 的模板系统，创建视图，将页面的显示效果从视图代码中分离出来。
+
+    在你的 polls 目录里创建一个 templates 目录。Django 将会在这个目录里查找模板文件。
+
+    > 项目的 TEMPLATES 配置项描述了 Django 如何载入和渲染模板。默认的设置文件设置了 DjangoTemplates，并将 APP_DIRS 设置成了 True。这一选项将会让 DjangoTemplates 在每个 INSTALLED_APPS 文件夹中寻找 "templates" 子目录。这就是为什么尽管我们没有像在第二部分中那样修改 DIRS 设置，Django 也能正确找到 polls 的模板位置的原因。
+
+2. 在你刚刚创建的 templates 目录里，再创建一个目录 polls，然后在其中新建一个文件 index.html 。
+
+    你的模板文件的路径应该是`polls/templates/polls/index.html` 。因为``app_directories`` 模板加载器是通过上述描述的方法运行的，所以 Django 可以引用到 polls/index.html 这一模板了。
+    > 虽然我们现在可以将模板文件直接放在 polls/templates 文件夹中（而不是再建立一个 polls 子文件夹），但是这样做不太好。Django 将会选择第一个匹配的模板文件，如果你有一个模板文件正好和另一个应用中的某个模板文件重名，Django 没有办法 区分 它们。我们需要帮助 Django 选择正确的模板，最好的方法就是把他们放入各自的 命名空间 中，也就是把这些模板放入一个和 自身 应用重名的子文件夹里。
+
+3. 完成html模板代码编写
+
+    ```html
+    <!-- polls\templates\polls\index.html -->
+    <!DOCTYPE html>
+    <body>
+    {% if latest_question_list %}
+    <ul>
+    {% for question in latest_question_list %}
+        <li><a href="/polls/{{ question.id }}/">{{ question.question_text }}</a></li>
+    {% endfor %}
+    </ul>
+    {% else %}
+        <p>No polls are available.</p>
+    {% endif %}
+    </body>
+    </html>
+    ```
+
+4. 更新一下 polls/views.py 里的 index 视图来使用模板
+
+    ```python
+    from django.http import HttpResponse
+    from django.template import loader
+
+    from .models import Question
+
+
+    def index(request):
+        latest_question_list = Question.objects.order_by('-pub_date')[:5]
+        template = loader.get_template('polls/index.html')
+        context = {
+            'latest_question_list': latest_question_list,
+        }
+        return HttpResponse(template.render(context, request))
+    ```
+
+    loader.get_template 载入 polls/index.html 模板文件，并且向它传递一个上下文(context)。这个上下文是一个字典，它将模板内的变量映射为 Python 对象。
+
+### template.render()
+
+载入模板，填充上下文，再返回由它生成的 **HttpResponse** 对象
+
+Django也提供了快捷的使用方式：
+
+```python
+
+def index(request):
+    latest_question_list = Question.objects.order_by('-pub_date')[:5]
+    context = {'latest_question_list': latest_question_list}
+    return render(request, 'polls/index.html', context)
+```
+
+### 抛出 404 错误
+
+```python
+# polls\views.py
+from django.http import Http404
+from django.shortcuts import render
+
+from .models import Question
+# ...
+def detail(request, question_id):
+    try:
+        question = Question.objects.get(pk=question_id)
+    except Question.DoesNotExist:
+        raise Http404("Question does not exist")
+    return render(request, 'polls/detail.html', {'question': question})
+```
+
+```html
+<!-- polls\templates\polls\detail.html -->
+<!DOCTYPE html>
+<body>
+  {{ question }}
+</body>
+</html>
+```
+
+当访问不到详细的Question时,会抛出404错误,Django也提供了相应的快捷函数:
+
+- **快捷函数：[get_object_or_404()](https://docs.djangoproject.com/zh-hans/4.1/topics/http/shortcuts/#get-object-or-404)**
+
+    当用 get() 函数获取一个对象，如果不存在就抛出 Http404 错误。下面是修改后的详情 detail() ：
+
+    ```python
+    from django.shortcuts import get_object_or_404, render
+
+    from .models import Question
+    # ...
+    def detail(request, question_id):
+        question = get_object_or_404(Question, pk=question_id)
+        return render(request, 'polls/detail.html', {'question': question})
+    ```
+
+    > 为什么我们使用辅助函数 get_object_or_404() 而不是自己捕获 ObjectDoesNotExist 异常呢？还有，为什么模型 API 不直接抛出 ObjectDoesNotExist 而是抛出 Http404 呢？
+
+    因为这样做会增加模型层和视图层的耦合性。指导 Django 设计的最重要的思想之一就是要保证松散耦合。一些受控的耦合将会被包含在 [django.shortcuts](https://docs.djangoproject.com/zh-hans/4.1/topics/http/shortcuts/#module-django.shortcuts) 模块中。
+
+
+### 模板操作
+
+在detail.html页面，我们传入了我们找到的Question，在模板中Django是如何使用这个question，最后进行显示出来的呢？
+> 首先 Django 尝试对 question 对象使用字典查找（也就是使用 obj.get(str) 操作），如果失败了就尝试属性查找（也就是 obj.str 操作），结果是成功了。如果这一操作也失败的话，将会尝试列表查找（也就是 obj[int] 操作）。
+
+修改detail.html，当question查找到值，就会在页面上渲染出来
+
+```html
+<!-- polls\templates\polls\detail.html -->
+<!DOCTYPE html>
+<body>
+  <h1>{{ question.question_text }}</h1>
+  <ul>
+  {% for choice in question.choice_set.all %}
+      <li>{{ choice.choice_text }}</li>
+  {% endfor %}
+  </ul>
+</body>
+</html>
+```
+
+### 去除模板硬编码
+
+我们在 polls/index.html 里编写投票链接时，链接是硬编码的：
+
+```html
+<li><a href="/polls/{{ question.id }}/">{{ question.question_text }}</a></li>
+```
+
+硬编码即在模板中写死了URL，这种强耦合的连接写法，如果应用路径一发生变动，修改起来会非常麻烦，因为在每个地方都要改，而且模板中没办法被索引到。Django官方推荐使用`{% url %}`标签替代它：
+
+```python
+<li><a href="{% url 'detail' question.id %}">{{ question.question_text }}</a></li>
+```
+
+`{% url %}`的工作方式是通过polls.urls中定义url时设置的name参数进行匹配的。
+
+
+### 为URL设置命名空间
+
+上文使用`{% url 'detail' %}`标签，我们的项目中可能有很多不同应用下的detail，因此出现这种情况，为了区分是哪个应用的，我们需要为应用设置命名空间：
+
+1. 修改polls/urls.py，加上 app_name 设置命名空间：
+
+   ```python
+   from django.urls import path
+
+    from . import views
+
+    app_name = 'polls'
+    urlpatterns = [
+        path('', views.index, name='index'),
+        path('<int:question_id>/', views.detail, name='detail'),
+        path('<int:question_id>/results/', views.results, name='results'),
+        path('<int:question_id>/vote/', views.vote, name='vote'),
+    ]
+   ```
+
+2. 修改polls/index.html，指向具有命名空间的详细视图：
+
+   ```html
+    <li><a href="{% url 'polls:detail' question.id %}">{{ question.question_text }}</a></li>
+   ```
+
+## Django表单
